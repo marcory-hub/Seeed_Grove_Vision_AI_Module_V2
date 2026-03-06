@@ -37,5 +37,26 @@ we2_image_gen_local/Images*.txt
 *.elf
 *.map
 *.img
+*.bin
 
-.vscode/
+# Python & envs
+.venv/
+__pycache__/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
+.VolumesIcon.icns
+.com.apple.timemachine.donotpresent
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
