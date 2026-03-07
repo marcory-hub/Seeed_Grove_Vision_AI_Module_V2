@@ -30,6 +30,11 @@
 *.out
 *.app
 
+# Model files
+*.tflite
+*.pt
+*.onnx
+
 # Various build files
 EPII_CM55M_APP_S/obj_*/**
 we2_image_gen_local/output_*/**
@@ -38,6 +43,15 @@ we2_image_gen_local/Images*.txt
 *.map
 *.img
 *.bin
+*.a
+*.log
+*.crt 
+*.txt
+
+
+# Exception: prebuilt firmware
+!we2_image_gen_local/output_case1_sec_wlcsp/
+!we2_image_gen_local/output_case1_sec_wlcsp/output.img
 
 # Python & envs
 .venv/
