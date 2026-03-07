@@ -35,17 +35,10 @@
 #include "memory_manage.h"
 #include <send_result.h>
 
-#define YOLO11_NO_POST_SEPARATE_OUTPUT 1
-
 #define INPUT_IMAGE_CHANNELS 3
 
-#if YOLO11_NO_POST_SEPARATE_OUTPUT
 #define YOLO11_OB_INPUT_TENSOR_WIDTH   224
 #define YOLO11_OB_INPUT_TENSOR_HEIGHT  224
-#else
-#define YOLO11_OB_INPUT_TENSOR_WIDTH   192
-#define YOLO11_OB_INPUT_TENSOR_HEIGHT  192
-#endif
 #define YOLO11_OB_INPUT_TENSOR_CHANNEL INPUT_IMAGE_CHANNELS
 
 #define YOLO11N_OB_DBG_APP_LOG 0
@@ -73,28 +66,19 @@ using namespace std;
 
 namespace {
 
-#if YOLO11_NO_POST_SEPARATE_OUTPUT
-constexpr int tensor_arena_size = 442*1024;
-#else
+/* Max of 3-output (442K) and single-output (1061K) so one binary supports all model types */
 constexpr int tensor_arena_size = 1061*1024;
-#endif
 static uint32_t tensor_arena=0;
 
 struct ethosu_driver ethosu_drv; /* Default Ethos-U device driver */
 tflite::MicroInterpreter *yolo11n_ob_int_ptr=nullptr;
-#if YOLO11_NO_POST_SEPARATE_OUTPUT
 TfLiteTensor *yolo11n_ob_input, *(yolo11n_ob_output[6]);
-#else
-TfLiteTensor *yolo11n_ob_input, *yolo11n_ob_output, *yolo11n_ob_output2;
-#endif
 };
-#if YOLO11_NO_POST_SEPARATE_OUTPUT
 int dim_total_size = 0;
 static float* stride_756_1;
 static float** anchor_756_2;
-#endif
 #if YOLO11N_OB_DBG_APP_LOG
-std::string coco_classes[] = {"person","bicycle","car","motorcycle","airplane","bus","train","truck","boat","traffic light","fire hydrant","stop sign","parking meter","bench","bird","cat","dog","horse","sheep","cow","elephant","bear","zebra","giraffe","backpack","umbrella","handbag","tie","suitcase","frisbee","skis","snowboard","sports ball","kite","baseball bat","baseball glove","skateboard","surfboard","tennis racket","bottle","wine glass","cup","fork","knife","spoon","bowl","banana","apple","sandwich","orange","broccoli","carrot","hot dog","pizza","donut","cake","chair","couch","potted plant","bed","dining table","toilet","tv","laptop","mouse","remote","keyboard","cell phone","microwave","oven","toaster","sink","refrigerator","book","clock","vase","scissors","teddy bear","hair drier","toothbrush"};
+std::string coco_classes[] = {"amel","vcra","vespsp","vvel","airplane","bus","train","truck","boat","traffic light","fire hydrant","stop sign","parking meter","bench","bird","cat","dog","horse","sheep","cow","elephant","bear","zebra","giraffe","backpack","umbrella","handbag","tie","suitcase","frisbee","skis","snowboard","sports ball","kite","baseball bat","baseball glove","skateboard","surfboard","tennis racket","bottle","wine glass","cup","fork","knife","spoon","bowl","banana","apple","sandwich","orange","broccoli","carrot","hot dog","pizza","donut","cake","chair","couch","potted plant","bed","dining table","toilet","tv","laptop","mouse","remote","keyboard","cell phone","microwave","oven","toaster","sink","refrigerator","book","clock","vase","scissors","teddy bear","hair drier","toothbrush"};
 int coco_ids[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31,
                       32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
                       57, 58, 59, 60, 61, 62, 63, 64, 65, 67, 70, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85,
@@ -150,7 +134,6 @@ static int _arm_npu_init(bool security_enable, bool privilege_enable)
     return 0;
 }
 
-#if YOLO11_NO_POST_SEPARATE_OUTPUT
 static void softmax(float *input, size_t input_len) {
   assert(input);
   // assert(input_len >= 0);  Not needed
@@ -357,7 +340,6 @@ void anchor_stride_matrix_construct()
 		printf("construct anchor matrix done\r\n");
 	#endif
 }
-#endif
 void print_float(float f_z)
 {
 	float o_f_z = f_z;
@@ -446,33 +428,22 @@ void print_model_info(tflite::MicroInterpreter * static_interpreter_ptr)
 	return ;
 }
 int cv_yolo11n_ob_init(bool security_enable, bool privilege_enable, uint32_t model_addr) {
-	#if YOLO11_NO_POST_SEPARATE_OUTPUT
+	/* Allocate stride/anchor for 3-output paths (YOLO11 no_post) */
+	dim_total_size = 0;
 	int dim_stride = 8;
-	int dim_stride_8_size = pow((YOLO11_OB_INPUT_TENSOR_WIDTH/dim_stride),2);
 	for(int i = 0; i < 3;i++)
 	{
-		if(i==0)
-		{
-			dim_stride = 8;
-		}
-		else if(i==1)
-		{
-			dim_stride = 16;
-		}
-		else
-		{
-			dim_stride = 32;
-		}
+		if(i==0) dim_stride = 8;
+		else if(i==1) dim_stride = 16;
+		else dim_stride = 32;
 		dim_total_size  += pow((YOLO11_OB_INPUT_TENSOR_WIDTH/dim_stride),2);
 	}
 	stride_756_1 = (float*)calloc(dim_total_size, sizeof(float));
 	anchor_756_2 = (float**)calloc(dim_total_size, sizeof(float *));
 	for(int i=0;i<dim_total_size;i++)
-	{
 		anchor_756_2[i] = (float*)calloc(2, sizeof(float));
-	}
-    anchor_stride_matrix_construct();
-	#endif
+	anchor_stride_matrix_construct();
+
 	int ercode = 0;
 
 	//set memory allocation to tensor_arena
@@ -517,15 +488,9 @@ int cv_yolo11n_ob_init(bool security_enable, bool privilege_enable, uint32_t mod
 		print_model_info(&yolo11n_ob_static_interpreter);
 		yolo11n_ob_int_ptr = &yolo11n_ob_static_interpreter;
 		yolo11n_ob_input = yolo11n_ob_static_interpreter.input(0);
-		#if YOLO11_NO_POST_SEPARATE_OUTPUT
 		int numOutputs = yolo11n_ob_static_interpreter.outputs_size();
-		for(int i = 0;i < numOutputs;i++)
-        {
-		    yolo11n_ob_output[i] = yolo11n_ob_static_interpreter.output(i);
-        }
-		#else
-		yolo11n_ob_output = yolo11n_ob_static_interpreter.output(0);
-		#endif
+		for(int i = 0; i < numOutputs && i < 6; i++)
+			yolo11n_ob_output[i] = yolo11n_ob_static_interpreter.output(i);
 	}
 
 	xprintf("initial done\n");
@@ -582,7 +547,6 @@ static void  yolo11_NMSBoxes(std::vector<box> &boxes,std::vector<float> &confide
     }
 }
 
-#if YOLO11_NO_POST_SEPARATE_OUTPUT
 static void yolo11_ob_post_processing(tflite::MicroInterpreter* static_interpreter,float modelScoreThreshold, float modelNMSThreshold, struct_yolov8_ob_algoResult *alg,	std::forward_list<el_box_t> &el_algo)
 {
 	uint32_t img_w = app_get_raw_width();
@@ -595,15 +559,20 @@ static void yolo11_ob_post_processing(tflite::MicroInterpreter* static_interpret
 	// 	output[i] = static_interpreter->output(i);
 	// }
 	/***
-	 * Change the model output order
-	 * |   origin     ->> change     |
-	 * 0: 1*28*28*144
-	 * 1: 1*7*7*144   ->> 1*14*14*144
-	 * 2: 1*14*14*144 ->> 1*7*7*144
-	 * ***/
-	output[0] = static_interpreter->output(0);//1*28*28*144
-	output[1] = static_interpreter->output(2);//1*14*14*144
-	output[2] = static_interpreter->output(1);//1*7*7*144
+	 * Map interpreter outputs to fixed order: output[0]=28x28, output[1]=14x14, output[2]=7x7 (stride 8,16,32).
+	 * Vela/export can emit the three tensors in any order; assign by spatial size so all orderings work.
+	 ***/
+	{
+		TfLiteTensor* out0 = static_interpreter->output(0);
+		TfLiteTensor* out1 = static_interpreter->output(1);
+		TfLiteTensor* out2 = static_interpreter->output(2);
+		int r0 = out0->dims->data[1];
+		int r1 = out1->dims->data[1];
+		int r2 = out2->dims->data[1];
+		if (r0 == 28) { output[0] = out0; output[1] = (r1 == 14) ? out1 : out2; output[2] = (r1 == 14) ? out2 : out1; }
+		else if (r1 == 28) { output[0] = out1; output[1] = (r0 == 14) ? out0 : out2; output[2] = (r0 == 14) ? out2 : out0; }
+		else { output[0] = out2; output[1] = (r0 == 14) ? out0 : out1; output[2] = (r0 == 14) ? out1 : out0; }
+	}
 	// init postprocessing 	
 	int out_dim_total = 0;
 	int out_dim_size[numOutputs];
@@ -736,143 +705,6 @@ static void yolo11_ob_post_processing(tflite::MicroInterpreter* static_interpret
 		#endif
 	}
 }
-#else
-static void yolo11_ob_post_processing(tflite::MicroInterpreter* static_interpreter,float modelScoreThreshold, float modelNMSThreshold, struct_yolov8_ob_algoResult *alg,	std::forward_list<el_box_t> &el_algo)
-{
-	uint32_t img_w = app_get_raw_width();
-    uint32_t img_h = app_get_raw_height();
-	TfLiteTensor* output = static_interpreter->output(0);
-	// init postprocessing 	
-	int num_classes = output->dims->data[1] - 4;
-
-	
-	// end init
-	///////////////////////
-	// start postprocessing
-	int nboxes=0;
-	int input_w = YOLO11_OB_INPUT_TENSOR_WIDTH;
-	int input_h = YOLO11_OB_INPUT_TENSOR_HEIGHT;
-
-	std::vector<uint16_t> class_idxs;
-	std::vector<float> confidences;
-	std::vector<box> boxes;
-
-
-	float output_scale = ((TfLiteAffineQuantization*)(output->quantization.params))->scale->data[0];
-	int output_zeropoint = ((TfLiteAffineQuantization*)(output->quantization.params))->zero_point->data[0];
-	int output_size = output->bytes;
-
-	#if YOLO11N_OB_DBG_APP_LOG
-		// xprintf("output->dims->size: %d\r\n",output->dims->size);
-		// printf("output_scale: %f\r\n",output_scale);
-		// xprintf("output_zeropoint: %d\r\n",output_zeropoint);
-		// xprintf("output_size: %d\r\n",output_size);
-		// xprintf("output->dims->data[0]: %d\r\n",output->dims->data[0]);//1
-		// xprintf("output->dims->data[1]: %d\r\n",output->dims->data[1]);//84
-		// xprintf("output->dims->data[2]: %d\r\n",output->dims->data[2]);//756
-	#endif
-	/***
-	 * dequantize the output result
-	 * 
-	 * 
-	 ******/
-	for(int dims_cnt_2 = 0; dims_cnt_2 < output->dims->data[2]; dims_cnt_2++)
-	{
-		float outputs_bbox_data[4];
-		float maxScore = (-1);// the first four indexes are bbox information
-		uint16_t maxClassIndex = 0;
-		for(int dims_cnt_1 = 0; dims_cnt_1 < output->dims->data[1]; dims_cnt_1++)
-		{
-			int value =  output->data.int8[ dims_cnt_2 + dims_cnt_1 * output->dims->data[2]];
-			
-			float deq_value = ((float) value-(float)output_zeropoint) * output_scale ;
-			if(dims_cnt_1<4)
-			{
-				/***
-				 * fix big score
-				 * ****/
-				if(dims_cnt_1%2)//==1
-				{
-					deq_value *= (float)input_h;
-				}
-				else
-				{
-					deq_value *= (float)input_w;
-				}
-				outputs_bbox_data[dims_cnt_1] = deq_value;
-			}
-			else
-			{
-				/***
-				 * find maximum Score and correspond Class idx
-				 * **/
-				if(maxScore < deq_value)
-				{
-					maxScore = deq_value;
-					maxClassIndex = dims_cnt_1-4;
-				}
-			}
-
-		}
-		if (maxScore >= modelScoreThreshold)
-		{
-			box bbox;
-			
-			bbox.x = (outputs_bbox_data[0] - (0.5 * outputs_bbox_data[2]));
-			bbox.y = (outputs_bbox_data[1] - (0.5 * outputs_bbox_data[3]));
-			bbox.w =(outputs_bbox_data[2]);
-			bbox.h = (outputs_bbox_data[3]);
-			boxes.push_back(bbox);
-			class_idxs.push_back(maxClassIndex);
-			confidences.push_back(maxScore);
-			
-		}
-	}
-	#if YOLO11N_OB_DBG_APP_LOG
-		xprintf("boxes.size(): %d\r\n",boxes.size());
-	#endif
-	/**
-	 * do nms
-	 * 
-	 * **/
-
-	std::vector<int> nms_result;
-	yolo11_NMSBoxes(boxes, confidences, modelScoreThreshold, modelNMSThreshold, nms_result);
-	for (int i = 0; i < nms_result.size(); i++)
-	{
-		if(!(MAX_TRACKED_YOLOV8_ALGO_RES-i))break;
-		int idx = nms_result[i];
-
-		float scale_factor_w = (float)img_w / (float)YOLO11_OB_INPUT_TENSOR_WIDTH; 
-		float scale_factor_h = (float)img_h / (float)YOLO11_OB_INPUT_TENSOR_HEIGHT; 
-		alg->obr[i].confidence = confidences[idx];
-		alg->obr[i].bbox.x = (uint32_t)(boxes[idx].x * scale_factor_w);
-		alg->obr[i].bbox.y = (uint32_t)(boxes[idx].y * scale_factor_h);
-		alg->obr[i].bbox.width = (uint32_t)(boxes[idx].w * scale_factor_w);
-		alg->obr[i].bbox.height = (uint32_t)(boxes[idx].h * scale_factor_h);
-		alg->obr[i].class_idx = class_idxs[idx];
-		el_box_t temp_el_box;
-		temp_el_box.score =  confidences[idx]*100;
-		temp_el_box.target =  class_idxs[idx];
-		temp_el_box.x = (uint32_t)(boxes[idx].x * scale_factor_w);
-		temp_el_box.y =  (uint32_t)(boxes[idx].y * scale_factor_h);
-		temp_el_box.w = (uint32_t)(boxes[idx].w * scale_factor_w);
-		temp_el_box.h = (uint32_t)(boxes[idx].h * scale_factor_h);
-
-
-		// printf("temp_el_box.x %d,temp_el_box.y: %d\r\n",temp_el_box.x,temp_el_box.y);
-		el_algo.emplace_front(temp_el_box);
-		// for (auto box : el_algo) {
-		// 	printf("el_algo.box.x %d,el_algo.box.y%d\r\n",box.x,box.y);
-		// }
-		#if YOLO11N_OB_DBG_APP_LOG
-			printf("detect object[%d]: %s confidences: %f\r\n",i, coco_classes[class_idxs[idx]].c_str(),confidences[idx]);
-
-		#endif
-	}
-
-}
-#endif
 
 int cv_yolo11n_ob_run(struct_yolov8_ob_algoResult *algoresult_yolo11n_ob) {
 	int ercode = 0;
@@ -1004,14 +836,10 @@ if( g_trans_type == 0 || g_trans_type == 2)// transfer type is (UART) or (UART &
 
 int cv_yolo11n_ob_deinit()
 {
-	#if YOLO11_NO_POST_SEPARATE_OUTPUT
 	free(stride_756_1);
 	for(int i = 0; i < dim_total_size; i++)
-	{
 		free(anchor_756_2[i]);
-	}
 	free(anchor_756_2);
-	#endif
 	return 0;
 }
 
