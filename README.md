@@ -35,7 +35,9 @@ Use this path if you want to flash the device with a pre-built YOLO11 image and 
 
 ## Build and flash your own YOLO11 image
 
-If you have trained, quantized and converted your own YOLO11n model (you can find the instruction and colab notebooks [here](https://github.com/marcory-hub/yolo11n-on-grove-vision-ai-v2)):
+If you have trained, quantized, and converted your own YOLO11n model (see instructions and Colab notebooks [here](https://github.com/marcory-hub/yolo11n-on-grove-vision-ai-v2)), ensure your `.tflite` file meets the following specifications:
+- **Model Input Shape:** Use Netron to open the YOLO11n model file and check that the structure matches the following:
+  ![YOLO11n Vespa Model (224x224, int8, Vela, no-post)](/images/yolo11n_vespa_2026-02_imgsz224_full_integer_quant_vela_nopost.tflite.png)
 
 1. **Put your model in the model zoo.**
   Place your `.tflite` file in the appropriate folder under `model_zoo` (same path convention as in the original; see scenario [tflm_yolo11_od](https://github.com/HimaxWiseEyePlus/Seeed_Grove_Vision_AI_Module_V2/blob/main/EPII_CM55M_APP_S/app/scenario_app/tflm_yolo11_od/README.md) in the Outline table below).
@@ -372,5 +374,9 @@ So that, it can support cis_imx219 or cis_imx477 camera.
   - Enable the flag `LIB_CMSIS_NN_ENALBE` to build CMSIS-NN library 
   - You can reference the scenario app example about [allon_sensor_tflm_cmsis_nn](https://github.com/HimaxWiseEyePlus/Seeed_Grove_Vision_AI_Module_V2/tree/main/EPII_CM55M_APP_S/app/scenario_app/allon_sensor_tflm_cmsis_nn) which is the example running the model without passing vela and using the CMSIS-NN library.
     - Change the `APP_TYPE` to `allon_sensor_tflm_cmsis_nn` at the [makefile](https://github.com/HimaxWiseEyePlus/Seeed_Grove_Vision_AI_Module_V2/blob/main/EPII_CM55M_APP_S/makefile)
+
+**YOLO11n Model Specifications:**  
+- Input resolution: 224x224  
+- Quantization: Vela, no_post-activation quantization applied
 
 [Back to Outline](https://github.com/HimaxWiseEyePlus/Seeed_Grove_Vision_AI_Module_V2?tab=readme-ov-file#outline)
