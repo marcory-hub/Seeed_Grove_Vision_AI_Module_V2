@@ -48,7 +48,6 @@ we2_image_gen_local/Images*.txt
 *.crt 
 *.txt
 
-
 # Exception: prebuilt firmware
 !we2_image_gen_local/output_case1_sec_wlcsp/
 !we2_image_gen_local/output_case1_sec_wlcsp/output.img
