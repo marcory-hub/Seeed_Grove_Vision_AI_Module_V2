@@ -2,7 +2,7 @@
 
 ## In short
 
-The [Grove Vision AI Module V2 (GV2)](https://www.kiwi-electronics.com/nl/grove-vision-ai-module-v2-20039) is a tiny onboard computer (MCU) connected to a [small camera](https://www.tinytronics.nl/en/sensors/optical/cameras-and-scanners/raspberry-pi-compatible-camera-5mp-v1.3), and it runs AI on the device; **output.img** is a ready-made software image for it, and **flashing** means copying that image onto the board so it runs the new program.
+This repo helps you get YOLO11 object detection running on the board: you can flash a ready-made image that detects hornets or build and flash your own. The [Grove Vision AI Module V2 (GV2)](https://www.kiwi-electronics.com/nl/grove-vision-ai-module-v2-20039) is a tiny onboard computer (MCU) connected to a [small camera](https://www.tinytronics.nl/en/sensors/optical/cameras-and-scanners/raspberry-pi-compatible-camera-5mp-v1.3), and it runs AI on the device; **output.img** is a ready-made software image for it that detects Yellow-legged hornets, European hornets, wasps and bees. It can be **flashed** (= copying that image onto the board) so it runs the hornet detection AI.
 
 ## Contents
 
