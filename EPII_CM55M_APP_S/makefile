@@ -153,6 +153,7 @@ CUSTOMER ?= seeed
 # tflm_yolo11_od
 # tflm_yolov8_gender_cls
 # tflm_mb_cls
+# torch_mb_cls
 ##
 APP_TYPE = tflm_yolo11_od
  
