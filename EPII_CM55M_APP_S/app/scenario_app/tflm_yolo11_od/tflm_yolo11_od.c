@@ -69,7 +69,10 @@
 #include "hx_drv_watchdog.h"
 
 // I2C slave output to host MCU (ESP32-S3).
+// Disabled by default for the "UART-only" setup (define VST_I2C_STATE_TX to enable).
+#ifdef VST_I2C_STATE_TX
 #include "hx_drv_iic.h"
+#endif
 
 // Optional UART output to host MCU (ESP32-S3).
 // NOTE: This uses the console UART peripheral (ID 0). [to be verified]
@@ -128,9 +131,11 @@ void pinmux_init();
 // - 2: other class present (any class != 3)
 // Use 0x63 to avoid collisions while debugging bus visibility.
 // Once proven visible, we can switch back to 0x62.
+#ifdef VST_I2C_STATE_TX
 static const uint8_t kI2cSlaveAddressSlv0 = 0x63;
 static volatile uint8_t g_i2c_detection_state = 0;
 static uint8_t g_i2c_tx_buf_slv0[1] = {0};
+#endif
 static const float kMinDetectionConfidence = 0.60f;
 
 #ifdef VST_UART_STATE_TX
@@ -217,6 +222,7 @@ static void uart_send_jpeg_frame(uint8_t state, uint8_t class_idx, uint8_t conf_
 }
 #endif
 
+#ifdef VST_I2C_STATE_TX
 static void i2cs_tx_cb_slv0(void *param) {
     (void)param;
     g_i2c_tx_buf_slv0[0] = g_i2c_detection_state;
@@ -242,6 +248,7 @@ static void i2c_slave_init_for_detection_state(void) {
     g_i2c_tx_buf_slv0[0] = g_i2c_detection_state;
     hx_drv_i2cs_interrupt_write(USE_DW_IIC_SLV_0, kI2cSlaveAddressSlv0, g_i2c_tx_buf_slv0, sizeof(g_i2c_tx_buf_slv0), i2cs_tx_cb_slv0);
 }
+#endif
 
 static void update_i2c_detection_state_from_algo_result(void) {
     uint8_t new_state = 0;
@@ -271,8 +278,10 @@ static void update_i2c_detection_state_from_algo_result(void) {
             new_state = 2;
         }
     }
+#ifdef VST_I2C_STATE_TX
     g_i2c_detection_state = new_state;
     g_i2c_tx_buf_slv0[0] = g_i2c_detection_state;
+#endif
 
 #ifdef VST_UART_STATE_TX
     // Send continuously: makes bring-up robust even if the host misses an edge.
@@ -1146,7 +1155,9 @@ int tflm_yolo11_od_app(void) {
     xprintf("wakeup_event=0x%x,WakeupEvt1=0x%x, freq=%d\n", wakeup_event, wakeup_event1, freq);
 
     pinmux_init();
+#ifdef VST_I2C_STATE_TX
     i2c_slave_init_for_detection_state();
+#endif
 
     //SCB_DisableICache();
     //SCB_DisableDCache();
