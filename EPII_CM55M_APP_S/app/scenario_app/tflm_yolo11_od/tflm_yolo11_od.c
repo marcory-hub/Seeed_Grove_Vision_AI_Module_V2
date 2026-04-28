@@ -1,4 +1,5 @@
-#include <stdio.h>
+// version 2026-04-28 I2C disabled to avoid conflicts on those pin
+
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
