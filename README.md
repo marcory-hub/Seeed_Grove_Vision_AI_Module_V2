@@ -1,4 +1,7 @@
 # Himax examples for Seeed Grove Vision AI Module V2
+
+> Note: This project is no longer actively maintained or up to date. The code and instructions below are preserved for historical reference only.
+
 This is a repository which step by step teaches you how to build your own examples and run on Seeed Grove Vision AI Module V2.
 Finally, teach you how to restore to the original factory settings and run [SenseCraft AI](https://wiki.seeedstudio.com/grove_vision_ai_v2_software_support/#-no-code-getting-started-with-sensecraft-ai-) from [Seeed Studio](https://wiki.seeedstudio.com/grove_vision_ai_v2/).
 ## Outline
